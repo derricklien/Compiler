@@ -32,36 +32,28 @@ public:
     bool lookupVariable(ProjectParser::VariableContext *ctx, SymTabEntry ** var_id);
     bool determineType(ProjectParser::TypeIDContext *ctx, TypeSpec ** type, string * type_indicator);
 
-    antlrcpp::Any visitRoot(ProjectParser::RootContext *ctx) override;
+    antlrcpp::Any visitStringExpr(ProjectParser::StringExprContext *ctx) override;
+    antlrcpp::Any visitNumber(ProjectParser::NumberContext *ctx) override;
+    antlrcpp::Any visitSignedNumber(ProjectParser::SignedNumberContext *ctx) override;
+    antlrcpp::Any visitIncrementExpr(ProjectParser::IncrementExprContext *ctx) override;
+    antlrcpp::Any visitBoolExpr(ProjectParser::BoolExprContext *ctx) override;
+    antlrcpp::Any visitVariableExpr(ProjectParser::VariableExprContext *ctx) override;
+    antlrcpp::Any visitAddSubExpr(ProjectParser::AddSubExprContext *ctx) override;
+    antlrcpp::Any visitExpr(ProjectParser::ExprContext *ctx) override;
+    antlrcpp::Any visitProgram(ProjectParser::ProgramContext *ctx) override;
     antlrcpp::Any visitFunctionDefinition(ProjectParser::FunctionDefinitionContext *ctx) override;
     antlrcpp::Any visitFunctionID(ProjectParser::FunctionIDContext *ctx) override;
     antlrcpp::Any visitVariableID(ProjectParser::VariableIDContext *ctx) override;
     antlrcpp::Any visitVariable(ProjectParser::VariableContext *ctx) override;
-  //  antlrcpp::Any visitBitIndexExpr(ProjectParser::BitIndexExprContext *ctx) override;
     antlrcpp::Any visitStr(ProjectParser::StrContext *ctx) override;
-    antlrcpp::Any visitStringExpr(ProjectParser::StringExprContext *ctx) override;
-    antlrcpp::Any visitNumber(ProjectParser::NumberContext *ctx) override;
-    antlrcpp::Any visitSignedNumber(ProjectParser::SignedNumberContext *ctx) override;
-   // antlrcpp::Any visitUnaryExpr(ProjectParser::UnaryExprContext *ctx) override;
-    antlrcpp::Any visitBoolExpr(ProjectParser::BoolExprContext *ctx) override;
-    antlrcpp::Any visitVariableExpr(ProjectParser::VariableExprContext *ctx) override;
-    //antlrcpp::Any visitBitExpr(ProjectParser::BitExprContext *ctx) override;
-    antlrcpp::Any visitAddSubExpr(ProjectParser::AddSubExprContext *ctx) override;
-   // antlrcpp::Any visitArrayExpr(ProjectParser::ArrayExprContext *ctx) override;
-    antlrcpp::Any visitExpr(ProjectParser::ExprContext *ctx) override;
     antlrcpp::Any visitMulDivModExpr(ProjectParser::MulDivModExprContext *ctx) override;
     antlrcpp::Any visitFuncCallExpr(ProjectParser::FuncCallExprContext *ctx) override;
     antlrcpp::Any visitUnsignedNumberExpr(ProjectParser::UnsignedNumberExprContext *ctx) override;
     antlrcpp::Any visitParenExpr(ProjectParser::ParenExprContext *ctx) override;
     antlrcpp::Any visitSignedNumberExpr(ProjectParser::SignedNumberExprContext *ctx) override;
-    //antlrcpp::Any visitPreInc(ProjectParser::PreIncContext *ctx) override;
-    //antlrcpp::Any visitPreDec(ProjectParser::PreDecContext *ctx) override;
-    //antlrcpp::Any visitPostInc(ProjectParser::PostIncContext *ctx) override;
-   // antlrcpp::Any visitPostDec(ProjectParser::PostDecContext *ctx) override;
+    antlrcpp::Any visitPostinc(ProjectParser::PostincContext *ctx) override;
     antlrcpp::Any visitVariableDeclaration(ProjectParser::VariableDeclarationContext *ctx) override;
-    //antlrcpp::Any visitArrayDeclaration(ProjectParser::ArrayDeclarationContext *ctx) override;
     antlrcpp::Any visitVariableDef(ProjectParser::VariableDefContext *ctx) override;
-    //antlrcpp::Any visitArrayDef(ProjectParser::ArrayDefContext *ctx) override;
 };
 
 #endif /* PASS1VISITOR_H_ */

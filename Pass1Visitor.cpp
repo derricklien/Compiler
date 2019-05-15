@@ -101,10 +101,10 @@ Pass1Visitor::~Pass1Visitor() {}
 
 ostream& Pass1Visitor::get_assembly_file() { return j_file; }
 
-antlrcpp::Any Pass1Visitor::visitRoot(ProjectParser::RootContext *ctx)
+antlrcpp::Any Pass1Visitor::visitProgram(ProjectParser::ProgramContext *ctx)
 {   
     // Visit Header Block
-    // cout << "=== visitRoot: " + ctx->getText() << endl;
+    // cout << "=== visitProgram: " + ctx->getText() << endl;
 
     program_id = symtab_stack->enter_local(program_name);
     program_id->set_definition((Definition)DF_PROGRAM);
@@ -143,7 +143,7 @@ antlrcpp::Any Pass1Visitor::visitRoot(ProjectParser::RootContext *ctx)
     j_file << ".limit stack 1" << endl;
     j_file << ".end method" << endl;
 
-       // cout << "=== visitRoot: Printing xref table." << endl;
+       // cout << "=== visitProgram: Printing xref table." << endl;
 
 //    // Print the cross-reference table.
 //    CrossReferencer cross_referencer;
@@ -176,31 +176,7 @@ antlrcpp::Any Pass1Visitor::visitVariableDeclaration(ProjectParser::VariableDecl
     
     return value;
 }
-/*
-antlrcpp::Any Pass1Visitor::visitArrayDeclaration(ProjectParser::ArrayDeclarationContext *ctx)
-{
-    // cout << "=== visitArrayDeclarations: " << ctx->getText() << endl;
-    variable_id = nullptr;
 
-    auto value = visitChildren(ctx);
-
-    TypeSpec *type;
-    string type_indicator;
-    
-    if(determineType(ctx->typeID(), &type, &type_indicator) == false)
-    {
-        EXCEPTION("Invalid type!");
-    }
-    
-    // Set the Variable Type
-    variable_id->set_typespec(type);
-
-    // Emit a field declaration for arrays [.
-    j_file << ".field private static " << variable_id->get_name() << " " << "[" << type_indicator << endl;
-
-    return value;
-}
-*/
 antlrcpp::Any Pass1Visitor::visitVariableDef(ProjectParser::VariableDefContext *ctx)
 {
     // cout << "=== visitVariableDefs: " << ctx->getText() << endl;
@@ -224,37 +200,7 @@ antlrcpp::Any Pass1Visitor::visitVariableDef(ProjectParser::VariableDefContext *
 
     return value;
 }
-/*
-antlrcpp::Any Pass1Visitor::visitArrayDef(ProjectParser::ArrayDefContext *ctx)
-  {
-    // cout << "=== visitArrayDefs: " << ctx->getText() << endl;
-    variable_id = nullptr;
 
-    auto value = visitChildren(ctx);
-
-    TypeSpec *type;
-    string type_indicator;
-
-    if(determineType(ctx->typeID(), &type, &type_indicator) == false)
-    {
-        EXCEPTION("Invalid type!");
-    }
-
-    // Set the Variable Type
-    variable_id->set_typespec(type);
-
-    // Emit a field declaration for arrays [.
-    j_file << ".field private static " << variable_id->get_name() << " " << "[" << type_indicator << endl;
-    
-    // Add array size to dictionary
-    string array_name = variable_id->get_name();
-    int    array_size = stoi(ctx->number()->getText());
-    
-    sizeTable.emplace(array_name, array_size);
-
-    return value;
-  }
-*/
 antlrcpp::Any Pass1Visitor::visitFunctionDefinition(ProjectParser::FunctionDefinitionContext *ctx)
 {
     // cout << "=== visitFunctionDefinition: " + ctx->getText() << endl;
@@ -276,7 +222,7 @@ antlrcpp::Any Pass1Visitor::visitFunctionDefinition(ProjectParser::FunctionDefin
     variable_id->set_typespec(type);
 
     visit(ctx->parameters());
-    visit(ctx->statementList());
+    visit(ctx->stmt());
     visit(ctx->expression());
     function_name = "";
 
@@ -329,16 +275,7 @@ antlrcpp::Any Pass1Visitor::visitVariableID(ProjectParser::VariableIDContext *ct
 	 ctx->type = variable_id->get_typespec();
      return visitChildren(ctx);
  }
-/*
-antlrcpp::Any Pass1Visitor::visitBitIndexExpr(ProjectParser::BitIndexExprContext *ctx)
-{
-    // cout << "=== visitBitIndexExpr: " + ctx->getText() << endl;
-    auto value = visitChildren(ctx);
-    ctx->type = ctx->variable()->type;
 
-    return value;
-}
-*/
 antlrcpp::Any Pass1Visitor::visitVariableExpr(ProjectParser::VariableExprContext *ctx)
 {
     // cout << "=== visitVariableExpr: " + ctx->getText() << endl;
@@ -347,26 +284,7 @@ antlrcpp::Any Pass1Visitor::visitVariableExpr(ProjectParser::VariableExprContext
 
     return value;
 }
-/*
-antlrcpp::Any Pass1Visitor::visitBitExpr(ProjectParser::BitExprContext *ctx)
-{
-   // cout << "=== visitBitExpr: " + ctx->getText() << endl;
 
-    auto value = visitChildren(ctx);
-
-    TypeSpec *type1 = ctx->expression(0)->type;
-    TypeSpec *type2 = ctx->expression(1)->type;
-
-    bool integer_mode =    (type1 == Predefined::integer_type)
-                        && (type2 == Predefined::integer_type);
-
-    TypeSpec *type = integer_mode ? Predefined::integer_type
-                   :                nullptr;
-    ctx->type = type;
-
-    return value;
-}
-*/
 antlrcpp::Any Pass1Visitor::visitAddSubExpr(ProjectParser::AddSubExprContext *ctx)
 {
    // cout << "=== visitAddSubExpr: " + ctx->getText() << endl;
@@ -385,17 +303,7 @@ antlrcpp::Any Pass1Visitor::visitAddSubExpr(ProjectParser::AddSubExprContext *ct
 
     return value;
 }
-/*
- antlrcpp::Any Pass1Visitor::visitArrayExpr(ProjectParser::ArrayExprContext *ctx)
- {
-	// cout << "=== visitArrayExpr: " + ctx->getText() << endl;
 
-	auto value = visitChildren(ctx);
-	ctx->type = ctx->variable()->type;
-
-	return value;
- }
-*/
 antlrcpp::Any Pass1Visitor::visitNumber(ProjectParser::NumberContext *ctx)
 {
     // cout << "=== visitNumber: " + ctx->getText() << endl;
@@ -517,48 +425,18 @@ antlrcpp::Any Pass1Visitor::visitParenExpr(ProjectParser::ParenExprContext *ctx)
 
     return value;
 }
-/*
-antlrcpp::Any Pass1Visitor::visitUnaryExpr(ProjectParser::UnaryExprContext *ctx)
+
+antlrcpp::Any Pass1Visitor::visitIncrementExpr(ProjectParser::IncrementExprContext *ctx)
 {
-    // cout << "=== visitUnaryExpr: " + ctx->getText() << endl;
+    // cout << "=== visitIncrementExpr: " + ctx->getText() << endl;
 
     auto value = visitChildren(ctx);
-    ctx->type = ctx->unary()->type;
+    ctx->type = ctx->increment()->type;
 
     return value;
 }
 
- antlrcpp::Any Pass1Visitor::visitPreInc(ProjectParser::PreIncContext *ctx)
- {
-    // cout << "=== visitPreInc: " + ctx->getText() << endl;
-    
-    auto value = visitChildren(ctx);
-
-    if(lookupVariable(ctx->variable(), &variable_id) == false)
-    {
-        EXCEPTION("Variable is not defined");
-    }
-    ctx->type = variable_id->get_typespec();
-
-    return value;
- }
-
- antlrcpp::Any Pass1Visitor::visitPreDec(ProjectParser::PreDecContext *ctx)
- {
-    // cout << "=== visitPreDec: " + ctx->getText() << endl;
-    
-    auto value = visitChildren(ctx);
-
-    if(lookupVariable(ctx->variable(), &variable_id) == false)
-    {
-        EXCEPTION("Variable is not defined");
-    }
-    ctx->type = variable_id->get_typespec();
-
-    return value;
- }
-
- antlrcpp::Any Pass1Visitor::visitPostInc(ProjectParser::PostIncContext *ctx)
+ antlrcpp::Any Pass1Visitor::visitPostinc(ProjectParser::PostincContext *ctx)
  {
 	// cout << "=== visitPostInc: " + ctx->getText() << endl;
 	
@@ -572,19 +450,3 @@ antlrcpp::Any Pass1Visitor::visitUnaryExpr(ProjectParser::UnaryExprContext *ctx)
 
 	return value;
  }
-
- antlrcpp::Any Pass1Visitor::visitPostDec(ProjectParser::PostDecContext *ctx)
- {
-    // cout << "=== visitPostDec: " + ctx->getText() << endl;
-    
-    auto value = visitChildren(ctx);
-
-    if(lookupVariable(ctx->variable(), &variable_id) == false)
-    {
-        EXCEPTION("Variable is not defined");
-    }
-    ctx->type = variable_id->get_typespec();
-
-    return value;
- }
-*/

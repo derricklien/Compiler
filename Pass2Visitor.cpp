@@ -11,20 +11,17 @@
 #include "wci/intermediate/SymTabEntry.h"
 #include "wci/intermediate/TypeSpec.h"
 #include "wci/intermediate/symtabimpl/Predefined.h"
+#include <stdio.h>
 
 using namespace wci;
 using namespace wci::intermediate;
 using namespace wci::intermediate::symtabimpl;
 
 static unordered_map<string, vector<vector<string>>> function_param_map;
-
 extern string program_name;
 extern unordered_map<string, int> sizeTable;
-
 static string function_name = "";
 
-
-#include <stdio.h>
 static string EXCEPTION(string message)
 {
 	cout << "Error: " << message << endl;
@@ -38,7 +35,6 @@ static string EXCEPTION(string message)
 	exit(1);
 }
 
-
 Pass2Visitor::Pass2Visitor(ostream& j_file)
     : j_file(j_file) {}
 
@@ -46,9 +42,9 @@ Pass2Visitor::~Pass2Visitor() {}
 
 int label_num = 0;
 
-antlrcpp::Any Pass2Visitor::visitRoot(ProjectParser::RootContext *ctx)
+antlrcpp::Any Pass2Visitor::visitProgram(ProjectParser::ProgramContext *ctx)
 {
-    // cout << "\tvisitRoot      " << ctx->getText() << endl;
+    // cout << "\tvisitProgram      " << ctx->getText() << endl;
     // visitMainBlock
     // Emit the main program header.
     j_file << endl;
@@ -95,7 +91,7 @@ antlrcpp::Any Pass2Visitor::visitRoot(ProjectParser::RootContext *ctx)
 
 	 j_file << "\tastore_1" << endl;
 
-	 vector<vector<string>> params;
+	 vector<vector<string>> paras;
 
 	 if(ctx->parameters() != NULL)
 	 {
@@ -104,13 +100,13 @@ antlrcpp::Any Pass2Visitor::visitRoot(ProjectParser::RootContext *ctx)
 			 string type_name     = ctx->parameters()->declaration(i)->children[0]->getText();
 			 string variable_name = ctx->parameters()->declaration(i)->children[1]->getText();
 
-			 params.push_back({function_name + variable_name, type_name});
+			 paras.push_back({function_name + variable_name, type_name});
 		 }
 	 }
 
-	 function_param_map.emplace(ctx->functionID()->IDENTIFIER()->getText(), params);
+	 function_param_map.emplace(ctx->functionID()->IDENTIFIER()->getText(), paras);
 
-	 auto value = visitChildren(ctx->statementList());
+	 auto value = visitChildren(ctx->stmt());
 
 	 if(ctx->expression() != NULL)
 	 {
@@ -131,15 +127,15 @@ antlrcpp::Any Pass2Visitor::visitRoot(ProjectParser::RootContext *ctx)
 	 {
 		 int input_count = ctx->identifiers()->expression().size();
 
-		 vector<vector<string>> params = function_param_map.find(ctx->function()->IDENTIFIER()->getText())->second;
+		 vector<vector<string>> paras = function_param_map.find(ctx->function()->IDENTIFIER()->getText())->second;
 
-		 int params_count = params.size();
+		 int paras_count = paras.size();
 
-		 int max = (params_count > input_count) ? input_count: params_count;
+		 int max = (paras_count > input_count) ? input_count: paras_count;
 		 for(int i = 0; i < max; i++)
 		 {
-			 string variable_name = params[i][0];
-			 string type_name     = params[i][1];
+			 string variable_name = paras[i][0];
+			 string type_name     = paras[i][1];
 			 visit(ctx->identifiers()->expression(i));
 
 			string type_indicator =
@@ -190,33 +186,30 @@ antlrcpp::Any Pass2Visitor::visitIfStatement(ProjectParser::IfStatementContext *
 {
     // cout << "\tvisitIfStatement      " << ctx->getText() << endl;
 
-    int math_expression_size = ctx->expr().size();
-    int original_label       = label_num;
-    int statement_size       = ctx->statementList().size();
-
+    int expression_size = ctx->expr().size();
+    int initial_label       = label_num;
+    int statement_size       = ctx->stmt().size();
     int current_label;
+    bool has_else = (expression_size < statement_size) ? true : false;
+    int last_label = label_num + expression_size;
 
-    bool has_else = (math_expression_size < statement_size) ? true : false;
-
-    int last_label = label_num + math_expression_size;
-
-    for(int i = 0; i < math_expression_size; i++)
+    for(int i = 0; i < expression_size; i++)
     {
     	visit(ctx->expr(i));
     }
 
     if(has_else)
     {
-    	visitChildren(ctx->statementList(statement_size - 1));
+    	visitChildren(ctx->stmt(statement_size - 1));
     }
 
     j_file << "\tgoto " << "Label_" << last_label << endl;
 
-    for(int i = 0; i < math_expression_size; i++)
+    for(int i = 0; i < expression_size; i++)
 	{
-    	current_label = original_label++;
+    	current_label = initial_label++;
     	j_file << "Label_" << current_label << ":" << endl;
-    	visitChildren(ctx->statementList(i));
+    	visitChildren(ctx->stmt(i));
 		j_file << "\tgoto " << "Label_" << last_label << endl;
 	}
     j_file << "Label_" << last_label << ":" << endl;
@@ -316,9 +309,9 @@ antlrcpp::Any Pass2Visitor::visitForStatement(ProjectParser::ForStatementContext
 				<< "/" << function_name << iterator
 				<< " " << type_iterator << endl;
 
-		if(ctx->statementList() != NULL)
+		if(ctx->stmt() != NULL)
 		{
-			visit(ctx->statementList());
+			visit(ctx->stmt());
 		}
 
 		//i++
@@ -380,9 +373,9 @@ antlrcpp::Any Pass2Visitor::visitForStatement(ProjectParser::ForStatementContext
         	EXCEPTION("Missing item in for loop");
         }
 
-		if(ctx->statementList() != NULL)
+		if(ctx->stmt() != NULL)
 		{
-			visit(ctx->statementList());
+			visit(ctx->stmt());
 		}
 		
 
@@ -485,7 +478,7 @@ antlrcpp::Any Pass2Visitor::visitExpr(ProjectParser::ExprContext *ctx)
     bool boolean_mode =    (type1 == Predefined::boolean_type)
                         && (type2 == Predefined::boolean_type);
 
-    string op = ctx->MATH_COMP()->getText();
+    string op = ctx->REL_COMP()->getText();
     string opcode;
 
     if (op == "==")
@@ -569,16 +562,16 @@ antlrcpp::Any Pass2Visitor::visitMulDivModExpr(ProjectParser::MulDivModExprConte
 
     return value;
 }
-/*
- antlrcpp::Any Pass2Visitor::visitUnaryExpr(ProjectParser::UnaryExprContext *ctx)
+
+ antlrcpp::Any Pass2Visitor::visitIncrementExpr(ProjectParser::IncrementExprContext *ctx)
  {
-	 // cout << "\tvisitUnaryExpr" << endl;
-	 string child0 = ctx->unary()->children[0]->getText();
-	 string child1 = ctx->unary()->children[1]->getText();
+	 // cout << "\tvisitincrementExpr" << endl;
+	 string child0 = ctx->increment()->children[0]->getText();
+	 string child1 = ctx->increment()->children[1]->getText();
 
 	string type_indicator =
-	                  (ctx->unary()->type == Predefined::integer_type) ? "I"
-	                : (ctx->unary()->type == Predefined::boolean_type) ? "Z"
+	                  (ctx->increment()->type == Predefined::integer_type) ? "I"
+	                : (ctx->increment()->type == Predefined::boolean_type) ? "Z"
 	                :                                                    EXCEPTION("Invalid Type");
 	 if(child0 == "++" || child0 == "--")
 	 {
@@ -598,33 +591,8 @@ antlrcpp::Any Pass2Visitor::visitMulDivModExpr(ProjectParser::MulDivModExprConte
 	 return NULL;
 
  }
-/*
- antlrcpp::Any Pass2Visitor::visitPreInc(ProjectParser::PreIncContext *ctx)
- {
-	 // cout << "\tvisitPreInc" << endl;
-	 auto value = visitChildren(ctx);
-	 j_file << "\ticonst_1" << endl;
-	 bool integer_mode = (ctx->type == Predefined::integer_type);
-	 string opcode = integer_mode ? "iadd"
-	                :                EXCEPTION("Invalid Type, Unknown OP");
-	 j_file << "\t" << opcode << endl;
 
-	 return value;
- }
-
- antlrcpp::Any Pass2Visitor::visitPreDec(ProjectParser::PreDecContext *ctx)
- {
-	 // cout << "\tvisitPreDec" << endl;
-	 auto value = visitChildren(ctx);
-	 j_file << "\ticonst_1" << endl;
-	 bool integer_mode = (ctx->type == Predefined::integer_type);
-	 string opcode = integer_mode ? "isub"
-					:                EXCEPTION("Invalid Type, Unknown OP");
-	 j_file << "\t" << opcode << endl;
-	 return value;
- }
-
- antlrcpp::Any Pass2Visitor::visitPostInc(ProjectParser::PostIncContext *ctx)
+ antlrcpp::Any Pass2Visitor::visitPostinc(ProjectParser::PostincContext *ctx)
  {
 	 // cout << "\tvisitPostInc" << endl;
 	 auto value = visitChildren(ctx);
@@ -636,20 +604,6 @@ antlrcpp::Any Pass2Visitor::visitMulDivModExpr(ProjectParser::MulDivModExprConte
 	 return value;
  }
 
- antlrcpp::Any Pass2Visitor::visitPostDec(ProjectParser::PostDecContext *ctx)
- {
-	 // cout << "\tvisitPostDec" << endl;
-	 auto value = visitChildren(ctx);
-	 j_file << "\ticonst_1" << endl;
-	 bool integer_mode = (ctx->type == Predefined::integer_type);
-	 string opcode = integer_mode ? "isub"
-					:                EXCEPTION("Invalid Type, Unknown OP");
-	 j_file << "\t" << opcode << endl;
-
-	 return value;
-
- }
-*/
 antlrcpp::Any Pass2Visitor::visitStr(ProjectParser::StrContext *ctx)
 {
 	// cout << "\tvisitStr" << ctx->getText() << endl;
@@ -670,11 +624,8 @@ antlrcpp::Any Pass2Visitor::visitPrintfStatement(ProjectParser::PrintfStatementC
     {
     	int identifier_count = ctx->identifiers()->expression().size();
 
-
     	j_file << "\tldc\t" << identifier_count << endl;
     	j_file << "\tanewarray java/lang/Object" << endl;
-
-
 
     	for(int i = 0; i < identifier_count; i++)
     	{
@@ -695,35 +646,7 @@ antlrcpp::Any Pass2Visitor::visitPrintfStatement(ProjectParser::PrintfStatementC
 	j_file << "\tinvokevirtual java/io/PrintStream/println(Ljava/lang/String;)V" << endl;
 	return value;
 }
-/*
-antlrcpp::Any Pass2Visitor::visitArrayDeclaration(ProjectParser::ArrayDeclarationContext *ctx)
-{
-	// cout << "\tvisitArrayDeclaration" << ctx->getText() << endl;
-	auto value = visitChildren(ctx);
-	string type_indicator;
-	if(ctx->typeID()->IDENTIFIER()->toString() == "int"){ //change this maybe
-		j_file << "\tnewarray int" << endl;
-		type_indicator = "[I";
-	}
-	else if(ctx->typeID()->IDENTIFIER()->toString() == "bool"){
-		j_file << "\tnewarray bool" << endl;
-		type_indicator = "[Z";
-	}
-	else if(ctx->typeID()->IDENTIFIER()->toString() == "string"){
-		j_file << "\tanewarray java/lang/String" << endl;
-		type_indicator = "[Ljava/lang/String;";
-	}
-	else{
-		type_indicator = EXCEPTION("Invalid Type");
-	}
 
-	j_file << "\tputstatic\t" << program_name
-			   << "/" << function_name << ctx->variableID()->IDENTIFIER()->toString()
-			   << " " << type_indicator << endl;
-
-	return value;
-}
-*/
 antlrcpp::Any Pass2Visitor::visitVariableDef(ProjectParser::VariableDefContext *ctx)
 {
 	// cout << "\tvisitVariableDef" << ctx->getText() << endl;
@@ -743,158 +666,7 @@ antlrcpp::Any Pass2Visitor::visitVariableDef(ProjectParser::VariableDefContext *
 
 	return value;
 }
-/*
-antlrcpp::Any Pass2Visitor::visitArrayDef(ProjectParser::ArrayDefContext *ctx)
-{
-	// cout << "\tvisitArrayDef" << ctx->getText() << endl;
-	visit(ctx->typeID());
-	visit(ctx->variableID());
-	visit(ctx->number());
 
-	int nums =  ctx->identifiers()->expression().size();
-	string type_indicator;
-	string store;
-	if(ctx->typeID()->IDENTIFIER()->toString() == "int"){
-		j_file << "\tnewarray int" << endl;
-		type_indicator = "[I";
-		store = "iastore";
-	}
-	else if(ctx->typeID()->IDENTIFIER()->toString() == "bool"){
-		j_file << "\tnewarray bool" << endl;
-		type_indicator = "[Z";
-		store = "iastore";
-	}
-	else if(ctx->typeID()->IDENTIFIER()->toString() == "string"){
-		j_file << "\tanewarray java/lang/String" << endl;
-		type_indicator = "[Ljava/lang/String;";
-		store = "aastore";
-	}
-	else{
-		type_indicator = EXCEPTION("Invalid Type");
-	}
-
-	string varID = ctx->variableID()->IDENTIFIER()->toString();
-	j_file << "\tputstatic\t" << program_name
-			   << "/" << function_name << varID
-			   << " " << type_indicator << endl;
-
-	if(stoi(ctx->number()->getText()) == nums) {
-		for (int i = 0; i < nums; i++) {
-			j_file << "\tgetstatic\t" << program_name << "/" << function_name <<  varID << " " << type_indicator << endl;
-			j_file << "\tldc " << i << endl;
-			visit(ctx->identifiers()->expression(i));
-			j_file << "\t" << store <<endl;
-
-		}
-	}
-	//more elements than array size ~ truncate (premature end)
-	else if(stoi(ctx->number()->getText()) < nums) {
-		for (int i = 0; i < stoi(ctx->number()->getText()); i++) {
-			j_file << "\tgetstatic\t" << program_name << "/" << function_name <<  varID << " " << type_indicator << endl;
-			j_file << "\tldc " << i << endl;
-			visit(ctx->identifiers()->expression(i));
-			j_file << "\t" << store <<endl;
-		}
-	}
-	//less elements than array size
-	else {
-		int i;
-		for (i = 0; i < nums; i++) {
-			j_file << "\tgetstatic\t" << program_name << "/" << function_name << varID << " " << type_indicator << endl;
-			j_file << "\tldc " << i << endl;
-			visit(ctx->identifiers()->expression(i));
-			j_file << "\t" << store <<endl;
-		}
-		//add zeros
-		for(; i<stoi(ctx->number()->getText()); i++){
-			j_file << "\tgetstatic\t" << program_name << "/" << function_name << varID << " " << type_indicator << endl;
-			j_file << "\tldc " << i << endl;
-			j_file << "\tldc 0" <<endl;
-			j_file << "\t" << store <<endl;
-		}
-	}
-	return NULL;
-}
-
-antlrcpp::Any Pass2Visitor::visitArrayExpr(ProjectParser::ArrayExprContext *ctx)
-{
-	// cout << "\tvisitArrayExpr" << ctx->getText() << endl;
-	string variable_name = ctx->variable()->IDENTIFIER()->getText();
-
-    string type_indicator =
-                  (ctx->type == Predefined::integer_type) ? "[I"
-			    : (ctx->type == Predefined::char_type) ? "[Ljava/lang/String;"
-                :                                                         EXCEPTION("Invalid Type");
-
-    string load =
-                   (ctx->type == Predefined::integer_type) ? "iaload"
- 			    : (ctx->type == Predefined::char_type) ? "aaload"
-                 :                                                         EXCEPTION("Invalid Type");
-	j_file << "\tgetstatic " <<  program_name << "/" << function_name << variable_name << " " << type_indicator << endl;
-	auto value = visit(ctx->expression());
-	j_file << "\t" << load << endl;
-	return value;
-}
-*/
-/*
-antlrcpp::Any Pass2Visitor::visitBitIndexAssignment(ProjectParser::BitIndexAssignmentContext *ctx)
-{
-    // cout << "\tvisitBitIndexAssignment" << ctx->getText() << endl;
-    string type_indicator =
-                  (ctx->expression(1)->type == Predefined::integer_type) ? "I"
-                :                                                         EXCEPTION("Invalid Type");
-
-    string variable_name = ctx->variable()->IDENTIFIER()->getText();
-    
-    int label_set = label_num++;
-    int label_clear = label_num++;
-    int label_end   = label_num++;
-    visit(ctx->expression(1));
-    j_file << "\tldc 0" << endl;
-    j_file << "\tif_icmpeq" << " Label_" << label_clear << endl;
-    j_file << "\tgoto Label_" << label_set << endl;
-
-    // set bit
-    j_file << "Label_" << label_set << ":" << endl;
-    j_file << "\tgetstatic\t" << program_name << "/" << function_name << variable_name << " " << type_indicator << endl;
-    j_file << "\ticonst_1" << endl;
-    auto value = visit(ctx->expression(0));
-    j_file << "\tishl" << endl;
-    j_file << "\tior"  << endl;
-    j_file << "\tgoto Label_" << label_end << endl;
-    // clear bit
-    j_file << "Label_" << label_clear << ":" << endl;
-    j_file << "\tgetstatic\t" << program_name << "/" << function_name << variable_name << " " << type_indicator << endl;
-    j_file << "\ticonst_1" << endl;
-    value = visit(ctx->expression(0));
-    j_file << "\tishl" << endl;
-    j_file << "\tineg"  << endl;
-    j_file << "\ticonst_1" << endl;
-    j_file << "\tisub" << endl;
-    j_file << "\tiand" << endl;
-
-    j_file << "Label_" << label_end << ":" << endl;
-    j_file << "\tputstatic\t" << program_name << "/" << function_name << variable_name << " " << type_indicator << endl;
-    return value;
-}
-
-antlrcpp::Any  Pass2Visitor::visitBitIndexExpr(ProjectParser::BitIndexExprContext *ctx)
-{
-//    cout << "\tvisitBitIndexExpr" << ctx->getText() << endl;
-    string variable_name = ctx->variable()->IDENTIFIER()->getText();
-    string type_indicator =
-                  (ctx->variable()->type == Predefined::integer_type) ? "I"
-                :                                                         EXCEPTION("Invalid Type");
-
-    j_file << "\tgetstatic\t" << program_name << "/" << function_name << variable_name << " " << type_indicator << endl;
-    auto value = visit(ctx->expression());
-    j_file << "\tishr" << endl;
-    j_file << "\ticonst_1" << endl;
-    j_file << "\tiand" << endl;
-    
-    return value;
-}
-*/
 antlrcpp::Any Pass2Visitor::visitVariableAssignment(ProjectParser::VariableAssignmentContext *ctx)
 {
 	// cout << "\tvisitVariableAssignment" << ctx->getText() << endl;
@@ -913,30 +685,6 @@ antlrcpp::Any Pass2Visitor::visitVariableAssignment(ProjectParser::VariableAssig
 
 	return value;
 }
-/*
-antlrcpp::Any Pass2Visitor::visitArrayAssignment(ProjectParser::ArrayAssignmentContext *ctx)
-{
-	// cout << "\tvisitArrayAssignment" << ctx->getText() << endl;
-	string type_indicator =
-				  (ctx->expression(0)->type == Predefined::integer_type) ? "[I"
-				: (ctx->expression(0)->type == Predefined::boolean_type) ? "[Z"
-				: (ctx->expression(0)->type == Predefined::char_type)    ? "[Ljava/lang/String;"
-				:                                                         EXCEPTION("Invalid Type");
 
-	string store =
-				  (ctx->expression(0)->type == Predefined::integer_type) ? "iastore"
-				: (ctx->expression(0)->type == Predefined::boolean_type) ? "iastore"
-				: (ctx->expression(0)->type == Predefined::char_type)    ? "aastore"
-				:                                                         EXCEPTION("Invalid Type");
-	string varID = ctx->variable()->getText();
-
-	j_file << "\tgetstatic\t" << program_name << "/" << function_name << varID << " " << type_indicator << endl;
-	visit(ctx->expression(0));
-	visit(ctx->expression(1));
-	j_file << "\t" << store <<endl;
-
-	return NULL;
-}
-*/
 
 

@@ -29,7 +29,7 @@ int main(int argc, const char *args[])
     CommonTokenStream tokens(&lexer);
 
     ProjectParser parser(&tokens);
-    tree::ParseTree *tree = parser.root();
+    tree::ParseTree *tree = parser.program();
 
     // cout << "+--------------------+" << endl;
     // cout << "|                    |" << endl;
