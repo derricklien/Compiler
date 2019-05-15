@@ -1,0 +1,17 @@
+int a = 1;
+string c = "cat";
+int sum(int num, int count)
+{
+    int ans = 0;
+    for(int i = 0; i < count; i++)
+    {
+        ans = ans + num;
+    }
+    return ans;
+}
+printf("The sum is: %d", sum(1, 2));
+
+if(a != 0)
+{
+	printf("ifStatement works.");
+}

@@ -1,0 +1,14 @@
+int a = 5;
+
+if(a < 2)
+{
+    printf("ifStatement is running");
+}
+elif (a == 3)
+{
+    printf("ifelseStatement is running.");
+}
+else
+{
+    printf("elseStatement is running.");
+}

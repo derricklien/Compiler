@@ -1,0 +1,10 @@
+int a = 3;
+
+if(a < 3)
+{
+    printf("ifStatement is running.");
+}
+elif (a == 3)
+{
+    printf("elseIfStatement is running.");
+}

@@ -1,0 +1,5 @@
+int a = 12;
+string b = "cat";
+
+printf("Variable a is: %d", a);
+printf("String b is: %s", b);
